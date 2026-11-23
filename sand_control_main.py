@@ -1,9 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os, sqlite3
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import streamlit as st
+
+def local_now():
+    # Часовой пояс UTC+5 (Нягань / ЕКБ)
+    return datetime.now(timezone(timedelta(hours=5))).replace(tzinfo=None)
 
 st.set_page_config(page_title="Контроль отгрузки песка", layout="wide")
 sns.set_theme(style="whitegrid")
@@ -94,7 +98,7 @@ if page == "📝 Заявки и Отгрузка":
             with st.form("req_form", clear_on_submit=True):
                 dept = st.selectbox(
                     "Подразделение",
-                    ["СУ-1", "ДСУ", "Бетонный узел", "Благоустройство"],
+                    ["ЦДНГ", "ЦЭРТ", "ЦППНиППД", "ЦЭЭ", "ЦЭОТВС", " Подрядчики OOC", "Подрядчики ДТИ", "Подрядчики УКС"],
                 )
                 place = st.text_input("Место выгрузки")
                 vol = st.number_input("План (м³)", min_value=1.0, value=20.0)
@@ -102,7 +106,7 @@ if page == "📝 Заявки и Отгрузка":
                     with sqlite3.connect(DB_FILE) as conn:
                         conn.execute(
                             "INSERT INTO shipments (created_at, department, unloading_place, planned_volume, status) VALUES (?, ?, ?, ?,'Новая заявка')",
-                            (datetime.now(), dept, place, vol),
+                            (local_now(), dept, place, vol),
                         )
                     st.rerun()
         else:
@@ -128,14 +132,14 @@ if page == "📝 Заявки и Отгрузка":
                     sel = st.selectbox("Заявка", list(opts.keys()))
                     exc = st.selectbox(
                         "Экскаватор",
-                        ["ЭКГ-5А №1", "Komatsu №2", "Hitachi №3", "CAT №4"],
+                        ["НYUNDAI R180NLC-9S #7565УТ86", "НYUNDAI R220LC-9S #9447УС86", "XCMG XE225DN #7695УТ86", "SHANTUI SE220LC #9533УХ86"],
                     )
                     act = st.number_input("Факт (м³)", min_value=1.0, value=20.0)
                     if st.form_submit_button("Отгрузить"):
                         with sqlite3.connect(DB_FILE) as conn:
                             conn.execute(
                                 "UPDATE shipments SET actual_volume=?, excavator_id=?, status='Отгружено', shipped_at=? WHERE id=?",
-                                (act, exc, datetime.now(), opts[sel]),
+                                (act, exc, local_now(), opts[sel]),
                             )
                         st.rerun()
             else:
@@ -205,7 +209,7 @@ elif page == "📊 Графики и Отчеты":
         period = st.radio(
             "Период:", ["Сутки", "Месяц", "Всё время"], horizontal=True
         )
-        now = datetime.now()
+        now = local_now()
         if period == "Сутки":
             rep = df[df["created_at"].dt.date == now.date()]
         elif period == "Месяц":

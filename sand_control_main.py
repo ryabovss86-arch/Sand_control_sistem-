@@ -117,6 +117,13 @@ with st.sidebar:
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "rb") as f:
             st.download_button("💾 Скачать базу (.db)", f, "sand_backup.db")
+    if st.session_state.role == "Администратор":
+        up_db = st.file_uploader("📤 Восстановить базу (.db)", type=["db"])
+        if up_db and st.button("Применить файл базы"):
+            with open(DB_FILE, "wb") as f:
+                f.write(up_db.getbuffer())
+            st.success("✅ База успешно восстановлена!")
+            st.rerun()
 
 role = st.session_state.role
 st.title("🏗️ Контроль отгрузки песка")
@@ -293,8 +300,14 @@ elif page == "📊 Графики и Отчеты":
 
         exp = format_df(rep)
         st.dataframe(exp, use_container_width=True)
+
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            exp.to_excel(writer, index=False, sheet_name="Отчет")
+
         st.download_button(
-            "📥 Скачать отчет (CSV)",
-            exp.to_csv(index=False, sep=";").encode("utf-8-sig"),
-            "otchet_pesok.csv",
+            "📥 Скачать отчет (Excel)",
+            buf.getvalue(),
+            f"otchet_pesok_{now.strftime('%Y_%m_%d')}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 )
